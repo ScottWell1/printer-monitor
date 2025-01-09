@@ -80,13 +80,15 @@ String WeatherLanguage = "en";  //Default (en) English
 const int WEBSERVER_PORT = 80; // The port you can access this device on over HTTP
 const boolean WEBSERVER_ENABLED = true;  // Device will provide a web interface via http://[ip]:[port]/
 boolean IS_BASIC_AUTH = true;  // true = require athentication to change configuration settings / false = no auth
-char* www_username = "admin";  // User account for the Web Interface
-char* www_password = "password";  // Password for the Web Interface
+//char* www_username = "admin";  // User account for the Web Interface
+char* www_username = (char*)"admin";  // User account for the Web Interface
+//char* www_password = "password";  // Password for the Web Interface
+char* www_password = (char*)"password";  // Password for the Web Interface
 
 // Date and Time
 float UtcOffset = -7; // Hour offset from GMT for your timezone
 boolean IS_24HOUR = false;     // 23:00 millitary 24 hour clock
-int minutesBetweenDataRefresh = 15;
+int minutesBetweenDataRefresh = 15;  //for weather and psuedo-ntp clock updates
 boolean DISPLAYCLOCK = true;   // true = Show Clock when not printing / false = turn off display when not printing
 
 // Display Settings

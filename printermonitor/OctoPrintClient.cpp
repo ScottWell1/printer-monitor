@@ -208,7 +208,7 @@ void OctoPrintClient::getPrinterJobResults() {
   printerData.state = (const char*)root["state"];
 
   if (isOperational()) {
-    Serial.println("Status: " + printerData.state);
+    Serial.println("Status: " + printerData.state);  
   } else {
     Serial.println("Printer Not Operational");
   }
@@ -230,6 +230,8 @@ void OctoPrintClient::getPrinterJobResults() {
     printerData.toolTargetTemp = "";
     printerData.bedTemp = "";
     printerData.bedTargetTemp = (const char*)root2["temperature"]["bed"]["target"];
+    //new line sw
+    Serial.println("FAILED TO PARSE [JsonObject& root2]");
     return;
   }
 

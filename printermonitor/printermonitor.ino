@@ -68,7 +68,8 @@ void drawClockHeaderOverlay(OLEDDisplay *display, OLEDDisplayUiState* state);
 const int numberOfFrames = 3;
 FrameCallback frames[numberOfFrames];
 FrameCallback clockFrame[2];
-boolean isClockOn = false;
+boolean isClockOn = false;    //set true when clock screens active
+boolean isMonitorOn = false;  //set true when print monitor screens active
 
 OverlayCallback overlays[] = { drawHeaderOverlay };
 OverlayCallback clockOverlay[] = { drawClockHeaderOverlay };
@@ -83,6 +84,11 @@ String lastMinute = "xx";
 String lastSecond = "xx";
 String lastReportStatus = "";
 boolean displayOn = true;
+
+//new main loop timing - SW
+unsigned long lastMillis = 0;
+unsigned long currentMillis = 0;
+unsigned long elapsedMillis = 0;
 
 // Printer Client
 #if defined(USE_REPETIER_CLIENT)
@@ -371,27 +377,32 @@ void findMDNS() {
 void loop() {
   
    //Get Time Update
+  //leave this here for clock, but printerClient polling now timed using millis() 
   if((getMinutesFromLastRefresh() >= minutesBetweenDataRefresh) || lastEpoch == 0) {
     getUpdateTime();
   }
 
-  if (lastMinute != timeClient.getMinutes() && !printerClient.isPrinting()) {
-    // Check status every 60 seconds
+  currentMillis = millis();
+  elapsedMillis = currentMillis - lastMillis;  
+  //When online or printing, poll at 10s -- Otherwise, reduce to 20s if last poll found offline
+  if ( (printerClient.isOperational() && (elapsedMillis >= 10000)) || (elapsedMillis > 20000) ) {
     ledOnOff(true);
-    lastMinute = timeClient.getMinutes(); // reset the check value
     printerClient.getPrinterJobResults();
     printerClient.getPrinterPsuState();
     ledOnOff(false);
-  } else if (printerClient.isPrinting()) {
-    if (lastSecond != timeClient.getSeconds() && timeClient.getSeconds().endsWith("0")) {
-      lastSecond = timeClient.getSeconds();
-      // every 10 seconds while printing get an update
-      ledOnOff(true);
-      printerClient.getPrinterJobResults();
-      printerClient.getPrinterPsuState();
-      ledOnOff(false);
-    }
+    lastMillis = currentMillis;
+    //Serial.println(ESP.getFreeHeap()); 
   }
+
+/*
+  if (elapsedMillis >= 10000) {   //10 seconds.  Millis can rollover every 49.7 days, but using unsigned long makes result correct anyway.
+    ledOnOff(true);
+    printerClient.getPrinterJobResults();
+    printerClient.getPrinterPsuState();
+    ledOnOff(false);
+    lastMillis = currentMillis;
+  }
+*/
 
   checkDisplay(); // Check to see if the printer is on or offline and change display.
 
@@ -913,54 +924,67 @@ void drawScreen1(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int
   String tool = printerClient.getValueRounded(printerClient.getTempToolActual());
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   display->setFont(ArialMT_Plain_16);
-  if (bed != "0") {
-    display->drawString(29 + x, 0 + y, "Tool");
-    display->drawString(89 + x, 0 + y, "Bed");
-  } else {
-    display->drawString(64 + x, 0 + y, "Tool Temp");
-  }
-  display->setTextAlignment(TEXT_ALIGN_LEFT);
-  display->setFont(ArialMT_Plain_24);
-  if (bed != "0") {
-    display->setTextAlignment(TEXT_ALIGN_LEFT);
-    display->drawString(12 + x, 14 + y, tool + "°");
-    display->drawString(74 + x, 14 + y, bed + "°");
-  } else {
+  if (printerClient.isOperational()) {    //always show temps if printer online or printing
+     if (bed != "0") {
+       display->drawString(29 + x, 0 + y, "Tool");
+       display->drawString(89 + x, 0 + y, "Bed");
+     } else {
+       display->drawString(64 + x, 0 + y, "Tool Temp");
+     }
+     display->setTextAlignment(TEXT_ALIGN_LEFT);
+     display->setFont(ArialMT_Plain_24);
+     if (bed != "0") {
+       display->setTextAlignment(TEXT_ALIGN_LEFT);
+       display->drawString(12 + x, 14 + y, tool + "°");
+       display->drawString(74 + x, 14 + y, bed + "°");
+     } else {
+       display->setTextAlignment(TEXT_ALIGN_CENTER);
+       display->drawString(64 + x, 14 + y, tool + "°");
+     }
+  } else {  //should not be needed, as screens not displayed if printer offline (either sleeps or displays clock)
     display->setTextAlignment(TEXT_ALIGN_CENTER);
-    display->drawString(64 + x, 14 + y, tool + "°");
+    display->drawString(64 + x, 14 + y, "(Printer Idle)");
   }
-}
+}  
 
 void drawScreen2(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   display->setFont(ArialMT_Plain_16);
 
-  display->drawString(64 + x, 0 + y, "Time Remaining");
-  //display->setTextAlignment(TEXT_ALIGN_LEFT);
-  display->setFont(ArialMT_Plain_24);
-  int val = printerClient.getProgressPrintTimeLeft().toInt();
-  int hours = numberOfHours(val);
-  int minutes = numberOfMinutes(val);
-  int seconds = numberOfSeconds(val);
-
-  String time = zeroPad(hours) + ":" + zeroPad(minutes) + ":" + zeroPad(seconds);
-  display->drawString(64 + x, 14 + y, time);
+  if (printerClient.isPrinting()) {  
+     display->drawString(64 + x, 0 + y, "Time Remaining");
+     //display->setTextAlignment(TEXT_ALIGN_LEFT);
+     display->setFont(ArialMT_Plain_24);
+     int val = printerClient.getProgressPrintTimeLeft().toInt();
+     int hours = numberOfHours(val);
+     int minutes = numberOfMinutes(val);
+     int seconds = numberOfSeconds(val);
+     String time = zeroPad(hours) + ":" + zeroPad(minutes) + ":" + zeroPad(seconds);
+     display->drawString(64 + x, 14 + y, time);
+  } else {
+    display->setTextAlignment(TEXT_ALIGN_CENTER);
+    display->drawString(64 + x, 14 + y, "(Printer Idle)");
+  }  
 }
 
 void drawScreen3(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   display->setFont(ArialMT_Plain_16);
 
-  display->drawString(64 + x, 0 + y, "Printing Time");
-  //display->setTextAlignment(TEXT_ALIGN_LEFT);
-  display->setFont(ArialMT_Plain_24);
-  int val = printerClient.getProgressPrintTime().toInt();
-  int hours = numberOfHours(val);
-  int minutes = numberOfMinutes(val);
-  int seconds = numberOfSeconds(val);
-
-  String time = zeroPad(hours) + ":" + zeroPad(minutes) + ":" + zeroPad(seconds);
-  display->drawString(64 + x, 14 + y, time);
+  if (printerClient.isPrinting()) {
+     display->drawString(64 + x, 0 + y, "Printing Time");
+     //display->setTextAlignment(TEXT_ALIGN_LEFT);
+     display->setFont(ArialMT_Plain_24);
+     int val = printerClient.getProgressPrintTime().toInt();
+     int hours = numberOfHours(val);
+     int minutes = numberOfMinutes(val);
+     int seconds = numberOfSeconds(val);
+     String time = zeroPad(hours) + ":" + zeroPad(minutes) + ":" + zeroPad(seconds);
+     display->drawString(64 + x, 14 + y, time);
+  } else {
+    display->setTextAlignment(TEXT_ALIGN_CENTER);
+    display->drawString(64 + x, 14 + y, "(Printer Idle)");
+  }   
 }
 
 void drawClock(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
@@ -1286,42 +1310,55 @@ int getMinutesFromLastDisplay() {
   return minutes;
 }
 
-// Toggle on and off the display if user defined times
+// added by SW
+void wakeDisplay() {
+  enableDisplay(true);
+  display.clear();
+  display.display();
+  display.setFont(ArialMT_Plain_16);
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.setContrast(255); // default is 255
+  display.drawString(64, 5, "Printer Online or Clock active,\nWaking up...");
+  display.display();
+  Serial.println("Printer is online, waking up...");
+}
+
+// added by SW
+void sleepDisplay() {
+  display.clear();
+  display.display();
+  display.setFont(ArialMT_Plain_16);
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.setContrast(255); // default is 255
+  display.drawString(64, 5, "Printer Offline\nGoing to Sleep...");
+  display.display();
+  delay(3000);
+  enableDisplay(false);
+  Serial.println("Printer offline, going to sleep...");
+}
+
+//re-written by SW
 void checkDisplay() {
-  if (!displayOn && DISPLAYCLOCK) {
-    enableDisplay(true);
-  }
-  if (displayOn && !printerClient.isPrinting() && !DISPLAYCLOCK) {
-    // Put Display to sleep
-    display.clear();
-    display.display();
-    display.setFont(ArialMT_Plain_16);
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setContrast(255); // default is 255
-    display.drawString(64, 5, "Printer Offline\nSleep Mode...");
-    display.display();
-    delay(5000);
-    enableDisplay(false);
-    Serial.println("Printer is offline going down to sleep...");
-    return;    
-  } else if (!displayOn && !DISPLAYCLOCK) {
-    if (printerClient.isOperational()) {
-      // Wake the Screen up
-      enableDisplay(true);
-      display.clear();
-      display.display();
-      display.setFont(ArialMT_Plain_16);
-      display.setTextAlignment(TEXT_ALIGN_CENTER);
-      display.setContrast(255); // default is 255
-      display.drawString(64, 5, "Printer Online\nWake up...");
-      display.display();
-      Serial.println("Printer is online waking up...");
-      delay(5000);
-      return;
+  if (printerClient.isOperational()) {   //True if online/idle or isPrinting
+    if (!isMonitorOn) {
+      //Setup Printer Monitor
+      Serial.println("Making Printer Monitor active.");
+      ui.setFrames(frames, numberOfFrames);
+      ui.setOverlays(overlays, numberOfOverlays);
+      ui.enableAutoTransition();
+      isClockOn = false;
+      isMonitorOn = true;
+      Serial.println("Clock disabled, PrintMonitor enabled.");
     }
-  } else if (DISPLAYCLOCK) {
-    if ((!printerClient.isPrinting() || printerClient.isPSUoff()) && !isClockOn) {
-      Serial.println("Clock Mode is turned on.");
+    if (!displayOn) {
+      wakeDisplay();
+    }
+  }
+  else
+  if (DISPLAYCLOCK) {
+    if (!isClockOn) {
+      //Setup clock mode
+      Serial.println("Making Clock Active.");
       if (!DISPLAYWEATHER) {
         ui.disableAutoTransition();
         ui.setFrames(clockFrame, 1);
@@ -1333,14 +1370,17 @@ void checkDisplay() {
         clockFrame[1] = drawWeather;
       }
       ui.setOverlays(clockOverlay, numberOfOverlays);
-      isClockOn = true;
-    } else if (printerClient.isPrinting() && !printerClient.isPSUoff() && isClockOn) {
-      Serial.println("Printer Monitor is active.");
-      ui.setFrames(frames, numberOfFrames);
-      ui.setOverlays(overlays, numberOfOverlays);
-      ui.enableAutoTransition();
-      isClockOn = false;
+      isClockOn = true;    
+      isMonitorOn = false;
+      Serial.println("Clock enabled; PrintMonitor Disabled.");
     }
+    if (!displayOn) {
+      wakeDisplay();
+    }
+  }
+  else
+  if (displayOn) {
+    sleepDisplay();
   }
 }
 
