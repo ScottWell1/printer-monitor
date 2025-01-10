@@ -89,6 +89,7 @@ boolean displayOn = true;
 unsigned long lastMillis = 0;
 unsigned long currentMillis = 0;
 unsigned long elapsedMillis = 0;
+boolean firstloop = true;
 
 // Printer Client
 #if defined(USE_REPETIER_CLIENT)
@@ -385,13 +386,13 @@ void loop() {
   currentMillis = millis();
   elapsedMillis = currentMillis - lastMillis;  
   //When online or printing, poll at 10s -- Otherwise, reduce to 20s if last poll found offline
-  if ( (printerClient.isOperational() && (elapsedMillis >= 10000)) || (elapsedMillis > 20000) ) {
+  if ( (printerClient.isOperational() && (elapsedMillis >= 10000)) || (elapsedMillis > 20000) || (firstloop) ) {
     ledOnOff(true);
     printerClient.getPrinterJobResults();
     printerClient.getPrinterPsuState();
     ledOnOff(false);
     lastMillis = currentMillis;
-    //Serial.println(ESP.getFreeHeap()); 
+    if (firstloop) { firstloop = false; }
   }
 
 /*
