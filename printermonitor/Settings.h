@@ -100,7 +100,7 @@ boolean INVERT_DISPLAY = false; // true = pins at top | false = pins at the bott
 
 // ********* DISPLAY TYPE **************
 
-#define DISPLAY_SH1106       // Uncomment this line to use the SH1106 display -- SSD1306 is used by default and is most common
+#define DISPLAY_SH1106       // Uncomment this line to use the larger SH1106 display -- SSD1306 (smaller) is used by default and is most common
 
 // *************************************
 

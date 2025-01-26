@@ -119,7 +119,7 @@ static const char WEB_ACTIONS[] PROGMEM =  "<a class='w3-bar-item w3-button' hre
 
 String CHANGE_FORM =  ""; // moved to config to make it dynamic
 
-static const char CLOCK_FORM[] PROGMEM = "<hr><p><input name='isClockEnabled' class='w3-check w3-margin-top' type='checkbox' %IS_CLOCK_CHECKED%> Display Clock when printer is off</p>"
+static const char CLOCK_FORM[] PROGMEM = "<hr><p><input name='isClockEnabled' class='w3-check w3-margin-top' type='checkbox' %IS_CLOCK_CHECKED%> Display Clock when printer is offline</p>"
                       "<p><input name='is24hour' class='w3-check w3-margin-top' type='checkbox' %IS_24HOUR_CHECKED%> Use 24 Hour Clock (military time)</p>"
                       "<p><input name='invDisp' class='w3-check w3-margin-top' type='checkbox' %IS_INVDISP_CHECKED%> Flip display orientation</p>"
                       "<p><input name='useFlash' class='w3-check w3-margin-top' type='checkbox' %USEFLASH%> Flash System LED on Service Calls</p>"
@@ -134,7 +134,7 @@ static const char THEME_FORM[] PROGMEM =   "<p>Theme Color <select class='w3-opt
                       "<button class='w3-button w3-block w3-grey w3-section w3-padding' type='submit'>Save</button></form>";
 
 static const char WEATHER_FORM[] PROGMEM = "<form class='w3-container' action='/updateweatherconfig' method='get'><h2>Weather Config:</h2>"
-                      "<p><input name='isWeatherEnabled' class='w3-check w3-margin-top' type='checkbox' %IS_WEATHER_CHECKED%> Display Weather when printer is off</p>"
+                      "<p><input name='isWeatherEnabled' class='w3-check w3-margin-top' type='checkbox' %IS_WEATHER_CHECKED%> Display weather along with Clock </p>"
                       "<label>OpenWeatherMap API Key (get from <a href='https://openweathermap.org/' target='_BLANK'>here</a>)</label>"
                       "<input class='w3-input w3-border w3-margin-bottom' type='text' name='openWeatherMapApiKey' value='%WEATHERKEY%' maxlength='60'>"
                       "<p><label>%CITYNAME1% (<a href='http://openweathermap.org/find' target='_BLANK'><i class='fa fa-search'></i> Search for City ID</a>) "
@@ -247,6 +247,7 @@ void setup() {
   // Uncomment for testing wifi manager
   //wifiManager.resetSettings();
   wifiManager.setAPCallback(configModeCallback);
+  wifiManager.setDebugOutput(true);
   
   String hostname(HOSTNAME);
   hostname += String(ESP.getChipId(), HEX);
@@ -1319,9 +1320,9 @@ void wakeDisplay() {
   display.setFont(ArialMT_Plain_16);
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.setContrast(255); // default is 255
-  display.drawString(64, 5, "Printer Online or Clock active,\nWaking up...");
+  display.drawString(64, 5, "Waking up...");
   display.display();
-  Serial.println("Printer is online, waking up...");
+  Serial.println("Printer Online or Clock/Weather Active, Waking up...");
 }
 
 // added by SW
