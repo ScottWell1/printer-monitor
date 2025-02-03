@@ -1,11 +1,5 @@
 # Printer Monitor (OctoPrint 3D Printer Monitor)
 
-## New Easy Monitor Board Kit:
-Now available is the Pre Loaded Monitor Board Kit that comes ready to plug and play on your network.  
-* Kit on Etsy: https://www.etsy.com/listing/823257424  
-* New 3D printed case design for Monitor Board kit: https://www.thingiverse.com/thing:4538747
-* Configuration video: https://www.youtube.com/watch?v=kcBspqWhpIU
-
 ## Features:
 * Displays the print status from OctoPrint or Repetier Server
 * Option to display time and weather when printer is idle
